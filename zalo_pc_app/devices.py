@@ -1,0 +1,289 @@
+"""Cai dat thiet bi mac dinh cua app: nguon mic, nguon camera, thong so hinh.
+
+Luu o <data_dir>/devices.json (0600: URL luong co the chua mat khau). Giao dien /
+API doc ban DA CHE mat khau (user:***@host). Moi cuoc goi co the ghi de bang
+truong `mic_url` / `mic_format` / `camera_url` cua /api/call/request, /answer,
+/api/call/media. Loa khong nam o day: app chi phat WAV (GET /api/call/audio/out/
+<token>) cho bat ky thiet bi nao (loa HA, trinh duyet, may khac).
+"""
+
+import json
+import os
+import re
+import threading
+
+DEFAULTS = {
+    "mic_url": "",              # "" = khong tu dong phat mic
+    "mic_format": "auto",       # auto | s16le16k (PCM tho 16 kHz, vi du mic R1)
+    "camera_url": "",           # "" = khong tu dong phat hinh
+    "speaker_url": "",          # "" = khong tu dong phat loa truc tiep (URL bo dam http(s) A-law 8 kHz)
+    "echo_guard": False,        # tam ngung gui mic khi loa dang phat tieng that (mic va loa cung thiet bi)
+    "mic_gain": 0,              # do to PHAN MEM cua mic gui sang ben kia (%, 0 = giu nguyen 100); doc lap voi cai dat cua loa R1. Quy tac/cuoc goi/nut +/- ghi de
+    "speaker_gain": 0,          # do to PHAN MEM tieng ben kia ra loa (%, 0 = giu nguyen 100)
+    "echo_delay_min_ms": None,  # cua so tre loa -> mic nhan ra VONG TRE (ms). None = theo ZALO_PC_ECHO_DELAY_MS (mac dinh 300-750); 0 va 0 = tat
+    "echo_delay_max_ms": None,
+    "echo_ratio": None,         # mic < ratio x dinh loa trong cua so tre thi la vong; to hon thi la nguoi nha noi chen. None = ZALO_PC_ECHO_RATIO (2,0)
+    "video": {"width": 640, "height": 360, "fps": 15, "bitrate_kbps": 300},
+    "auto_mic": True,           # tu phat mic khi cuoc goi duoc nghe may
+    "auto_video_on_request": False,  # dien thoai xin len video: tu dong y + phat camera. MAC DINH TAT (rieng tu): HA quyet dinh theo quy tac `video_request`
+    "auto_video_delay": 0,           # giay cho truoc khi tu dong y (0 = ngay)
+}
+MAX_AUTO_VIDEO_DELAY = 120
+MAX_GAIN = 300                   # % (khop audio_gain.MAX_PERCENT)
+MAX_ECHO_DELAY_MS = 3000
+ECHO_RATIO_RANGE = (0.5, 10.0)
+MIC_FORMATS = ("auto", "s16le16k")
+_URL_OK = re.compile(r"^(rtsps?|https?|rtmps?)://\S+$")
+_HTTP_OK = re.compile(r"^https?://\S+$")
+_MASK = re.compile(r"(://[^/\s:@]+:)[^@/\s]*@")
+# Tham so truy van mang bi mat (khoa mic R1 `?k=`, token...) cung bi che khi hien thi.
+_MASK_QUERY = re.compile(r"([?&](?:k|key|token|access_token|auth|pass|password|pwd|secret)=)[^&#\s]*",
+                         re.I)
+_LIMITS = {"width": (160, 1280), "height": (120, 720), "fps": (5, 30),
+           "bitrate_kbps": (50, 1500)}
+
+
+def mask_url(url):
+    """URL voi mat khau (user:***@) va tham so bi mat (?k=***) thay bang *** (hien thi / log)."""
+    return _MASK_QUERY.sub(r"\1***", _MASK.sub(r"\1***@", url or ""))
+
+
+def valid_source(url):
+    """Rong, "test", URL luong hop le hoac duong dan tep tuyet doi."""
+    return (url == "" or url == "test" or bool(_URL_OK.match(url))
+            or (url.startswith("/") and "\n" not in url and ".." not in url))
+
+
+CLIENTS = ("web", "pc")             # hai kieu dang nhap Zalo: moi kieu la mot phien rieng nen co BO cai dat thiet bi rieng
+
+
+class DeviceStore:
+    """Cai dat thiet bi, luu RIENG cho tung kieu dang nhap (web | pc): doi kieu dang nhap thi bo cua kieu do tu duoc ap dung.
+    `client_fn()` tra kieu DANG DUNG (server truyen protocol.client_name). Tep cu (mot bo phang) duoc nap cho CA HAI kieu lan dau
+    (ke thua), sau do hai ben doc lap. Moi ham doc/ghi nhan `client` tuy chon de xem/sua bo cua kieu khong dang dung."""
+
+    def __init__(self, path, client_fn=None):
+        self._path = path
+        self._client_fn = client_fn or (lambda: "pc")
+        self._lock = threading.Lock()
+        self._sets = self._load()
+
+    def active_client(self):
+        c = str(self._client_fn() or "").lower()
+        return c if c in CLIENTS else "pc"
+
+    def _which(self, client):
+        c = str(client or "").lower()
+        if c and c not in CLIENTS:
+            raise ValueError("client phai la web hoac pc")
+        return c or self.active_client()
+
+    def _load(self):
+        fresh = lambda: json.loads(json.dumps(DEFAULTS))          # noqa: E731
+        sets = {c: fresh() for c in CLIENTS}
+        try:
+            with open(self._path, encoding="utf-8") as fh:
+                raw = json.load(fh)
+        except (OSError, ValueError):
+            return sets
+        if not isinstance(raw, dict):
+            return sets
+        if raw.get("version") == 2 and any(isinstance(raw.get(c), dict) for c in CLIENTS):
+            for c in CLIENTS:
+                if isinstance(raw.get(c), dict):
+                    self._merge(sets[c], raw[c], strict=False)
+        else:                                                      # tep cu: mot bo phang -> ke thua cho ca hai kieu
+            for c in CLIENTS:
+                self._merge(sets[c], raw, strict=False)
+        return sets
+
+    @staticmethod
+    def _merge(data, patch, strict):
+        """Gop `patch` vao `data`. strict: sai gia tri -> ValueError."""
+        def bad(msg):
+            if strict:
+                raise ValueError(msg)
+
+        if "speaker_url" in patch:
+            val = str(patch["speaker_url"] or "").strip()
+            if "***" in val and re.search(r"=\*\*\*(?:&|$)|\*\*\*@", val):
+                pass                          # ban da che: giu nguyen
+            elif val == "" or _HTTP_OK.match(val):
+                data["speaker_url"] = val
+            else:
+                bad("speaker_url phai la URL http(s)")
+        if "echo_guard" in patch:
+            data["echo_guard"] = bool(patch["echo_guard"])
+        for key in ("mic_url", "camera_url"):
+            if key in patch:
+                val = str(patch[key] or "").strip()
+                if "***@" in val or re.search(r"=\*\*\*(?:&|$)", val):
+                    continue                      # ban da che: giu nguyen
+                if valid_source(val):
+                    data[key] = val
+                else:
+                    bad("%s khong hop le" % key)
+        for key in ("mic_gain", "speaker_gain"):
+            if key in patch:
+                try:
+                    if isinstance(patch[key], bool):
+                        raise ValueError
+                    data[key] = max(0, min(MAX_GAIN, int(round(float(patch[key] or 0)))))
+                except (TypeError, ValueError):
+                    bad("%s phai la so 0-%d (%%)" % (key, MAX_GAIN))
+        if "echo_delay_min_ms" in patch or "echo_delay_max_ms" in patch:
+            lo = patch.get("echo_delay_min_ms", data["echo_delay_min_ms"])
+            hi = patch.get("echo_delay_max_ms", data["echo_delay_max_ms"])
+            if lo in (None, "") and hi in (None, ""):
+                data["echo_delay_min_ms"] = data["echo_delay_max_ms"] = None          # tro ve theo bien moi truong
+            else:
+                try:
+                    lo, hi = int(round(float(lo))), int(round(float(hi)))
+                except (TypeError, ValueError):
+                    lo = hi = None
+                if lo is None or not (0 <= lo <= hi <= MAX_ECHO_DELAY_MS) or (lo == hi and lo != 0):
+                    bad("echo_delay_min_ms / echo_delay_max_ms phai la hai so ms, thap < cao <= %d (hoac cung 0 de tat)" % MAX_ECHO_DELAY_MS)
+                else:
+                    data["echo_delay_min_ms"], data["echo_delay_max_ms"] = lo, hi
+        if "echo_ratio" in patch:
+            if patch["echo_ratio"] in (None, ""):
+                data["echo_ratio"] = None
+            else:
+                try:
+                    ratio = float(patch["echo_ratio"])
+                    if isinstance(patch["echo_ratio"], bool) or not ECHO_RATIO_RANGE[0] <= ratio <= ECHO_RATIO_RANGE[1]:
+                        raise ValueError
+                    data["echo_ratio"] = round(ratio, 2)
+                except (TypeError, ValueError):
+                    bad("echo_ratio phai la so tu %s den %s" % ECHO_RATIO_RANGE)
+        if patch.get("mic_format") in MIC_FORMATS:
+            data["mic_format"] = patch["mic_format"]
+        elif "mic_format" in patch:
+            bad("mic_format khong hop le")
+        for key in ("auto_mic", "auto_video_on_request"):
+            if key in patch:
+                data[key] = bool(patch[key])
+        if "auto_video_delay" in patch:
+            try:
+                data["auto_video_delay"] = max(
+                    0, min(MAX_AUTO_VIDEO_DELAY, int(patch["auto_video_delay"])))
+            except (TypeError, ValueError):
+                bad("auto_video_delay khong hop le")
+        video = patch.get("video")
+        if isinstance(video, dict):
+            for key, (lo, hi) in _LIMITS.items():
+                if key in video:
+                    try:
+                        data["video"][key] = max(lo, min(hi, int(video[key])))
+                    except (TypeError, ValueError):
+                        bad("video.%s khong hop le" % key)
+
+    def get(self, client=None):
+        """Ban day du (co mat khau) cua kieu `client` (mac dinh: kieu dang dung) — chi dung trong tien trinh."""
+        with self._lock:
+            return json.loads(json.dumps(self._sets[self._which(client)]))
+
+    @staticmethod
+    def _mask(d):
+        d["mic_url"] = mask_url(d["mic_url"])
+        d["camera_url"] = mask_url(d["camera_url"])
+        d["speaker_url"] = mask_url(d["speaker_url"])
+        return d
+
+    def public(self, client=None):
+        return self._mask(self.get(client))
+
+    def public_all(self):
+        """Hai bo (da che mat khau) + kieu dang dung, de WebUI/HA hien thong nhat."""
+        return {"active": self.active_client(), **{c: self.public(c) for c in CLIENTS}}
+
+    def update(self, patch, client=None):
+        if not isinstance(patch, dict):
+            raise ValueError("thieu noi dung")
+        with self._lock:
+            which = self._which(client)
+            new = json.loads(json.dumps(self._sets[which]))
+            self._merge(new, patch, strict=True)
+            self._sets[which] = new
+            self._save()
+            return json.loads(json.dumps(new))
+
+    def _save(self):
+        tmp = self._path + ".tmp"
+        try:
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                json.dump({"version": 2, **self._sets}, fh, ensure_ascii=False)
+            os.replace(tmp, self._path)
+        except OSError:
+            pass            # khong luu duoc thi van dung ban trong bo nho
+
+
+class HaDeviceCatalog:
+    """Danh sách thiết bị trong HA mà WebUI cho CHỌN lúc nối mic / loa / camera cho một cuộc gọi (bước «Thêm thiết bị»), do HA ĐẨY xuống (HA là nguồn duy nhất: nó phân giải thực
+    thể → đường nối, app không biết HA). Mỗi mục {id (entity_id), name, url, format}; ``url`` (có thể chứa mật khẩu / khoá) CHỈ nằm trong app: giao diện chỉ nhận id + tên.
+    Lưu <data_dir>/ha_devices.json (0600) để WebUI vẫn dùng được sau khi app khởi động lại, trước khi HA đẩy lại."""
+
+    KINDS = ("mic", "speaker", "camera")
+    MAX_PER_KIND = 80
+    _ID = re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
+
+    def __init__(self, path):
+        self._path = path
+        self._lock = threading.Lock()
+        self._data = {k: [] for k in self.KINDS}
+        try:
+            with open(path, encoding="utf-8") as fh:
+                self.replace(json.load(fh), save=False)
+        except (OSError, ValueError):
+            pass
+
+    def replace(self, data, save=True):
+        """Thay cả danh sách. Mục sai (id lạ, URL không hợp lệ) bị bỏ, không làm hỏng cả danh sách; trả {kind: số mục nhận}."""
+        if not isinstance(data, dict):
+            raise ValueError("thieu noi dung")
+        new = {}
+        for kind in self.KINDS:
+            out, seen = [], set()
+            for it in (data.get(kind) or [])[:self.MAX_PER_KIND * 2]:
+                if not isinstance(it, dict):
+                    continue
+                eid, url = str(it.get("id") or ""), str(it.get("url") or "").strip()
+                ok_url = bool(_HTTP_OK.match(url)) if kind == "speaker" else (bool(_URL_OK.match(url)) or (url.startswith("/") and "\n" not in url and ".." not in url))
+                if not self._ID.match(eid) or eid in seen or not ok_url:
+                    continue
+                seen.add(eid)
+                fmt = str(it.get("format") or "auto")
+                out.append({"id": eid, "name": " ".join(str(it.get("name") or eid).split())[:80], "url": url,
+                            "format": fmt if fmt in MIC_FORMATS else "auto"})
+                if len(out) >= self.MAX_PER_KIND:
+                    break
+            new[kind] = out
+        with self._lock:
+            self._data = new
+            if save:
+                self._save()
+        return {k: len(v) for k, v in new.items()}
+
+    def public(self):
+        """Cho giao diện: chỉ id + tên."""
+        with self._lock:
+            return {k: [{"id": i["id"], "name": i["name"]} for i in v] for k, v in self._data.items()}
+
+    def lookup(self, kind, entity_id):
+        """(url, format) của một thiết bị HA, hoặc None."""
+        with self._lock:
+            for i in self._data.get(kind, []):
+                if i["id"] == entity_id:
+                    return i["url"], i["format"]
+        return None
+
+    def _save(self):
+        tmp = self._path + ".tmp"
+        try:
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                json.dump(self._data, fh, ensure_ascii=False)
+            os.replace(tmp, self._path)
+        except OSError:
+            pass

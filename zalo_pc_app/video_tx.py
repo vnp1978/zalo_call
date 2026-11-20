@@ -1,0 +1,201 @@
+"""Phat hinh len cuoc goi: ffmpeg (libx264) -> khung H.264 Annex-B -> transport.
+
+Nguon (`source`):
+  "test"            hinh kiem tra (lavfi testsrc2), chay dung nhip thuc;
+  rtsp:// rtsps://  luong camera (go2rtc / camera HA), mo bang TCP;
+  http(s):// rtmp://  luong mang khac;
+  duong dan tep     phat lap lai.
+
+Dau ra x264 profile baseline, khong B-frame, moi khung bat dau bang AUD (de tach
+khung), SPS/PPS lap lai o moi khung khoa; khung khoa moi `gop_seconds` giay
+(ffmpeg khong ep duoc khung khoa giua chung, nen khi dien thoai doi PLI phai
+cho khung khoa ke tiep). Ham `send_frame(annexb, key)` do ben goi cung cap
+(`Udp4200Transport.send_video_frame`). Khong ghi URL (co the chua mat khau)
+vao log.
+"""
+
+import shutil
+import subprocess
+import threading
+import time
+
+from . import ffmpeg_log
+
+
+def _nal_types(buf):
+    """Tap kieu NAL trong mot khung Annex-B (sau moi ma 00 00 01)."""
+    out, i = set(), 0
+    while True:
+        i = buf.find(b"\x00\x00\x01", i)
+        if i < 0 or i + 3 >= len(buf):
+            return out
+        out.add(buf[i + 3] & 0x1F)
+        i += 3
+
+
+class AccessUnitSplitter:
+    """Tach luong Annex-B thanh cac khung theo NAL AUD (loai 9)."""
+
+    _AUD = b"\x00\x00\x01\x09"
+
+    def __init__(self):
+        self._buf = bytearray()
+
+    def feed(self, data):
+        """Them du lieu; tra danh sach khung da day du (khung dang do giu lai)."""
+        self._buf += data
+        out = []
+        while True:
+            first = self._buf.find(self._AUD)
+            if first < 0:
+                break
+            nxt = self._buf.find(self._AUD, first + 4)
+            if nxt < 0:
+                break
+            end = nxt - 1 if self._buf[nxt - 1] == 0 else nxt
+            start = first - 1 if first > 0 and self._buf[first - 1] == 0 else first
+            out.append(bytes(self._buf[start:end]))
+            del self._buf[:end]
+        # Bo rac truoc AUD dau tien (neu luong bat dau giua chung).
+        if not out and len(self._buf) > (1 << 22):
+            del self._buf[:-4]
+        return out
+
+
+def is_key_frame(au):
+    """Khung khoa = co NAL IDR (5) hoac SPS (7)."""
+    types = _nal_types(au)
+    return 5 in types or 7 in types
+
+
+def build_ffmpeg_args(source, width=640, height=360, fps=15, bitrate_kbps=300,
+                      gop_seconds=1.0, ffmpeg="ffmpeg"):
+    src = str(source or "test")
+    args = [ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin"]
+    if src == "test":
+        args += ["-re", "-f", "lavfi", "-i",
+                 "testsrc2=size=%dx%d:rate=%d" % (width, height, fps)]
+    elif src.startswith(("rtsp://", "rtsps://")):
+        args += ["-rtsp_transport", "tcp", "-i", src]
+    elif src.startswith(("http://", "https://", "rtmp://", "rtmps://")):
+        args += ["-i", src]
+    else:
+        args += ["-re", "-stream_loop", "-1", "-i", src]
+    vf = ("scale=%d:%d:force_original_aspect_ratio=decrease,"
+          "pad=%d:%d:(ow-iw)/2:(oh-ih)/2,fps=%d,format=yuv420p"
+          % (width, height, width, height, fps))
+    gop = max(1, int(round(fps * gop_seconds)))
+    args += ["-an", "-vf", vf, "-c:v", "libx264", "-profile:v", "baseline",
+             "-level", "3.1", "-preset", "veryfast", "-tune", "zerolatency",
+             "-b:v", "%dk" % bitrate_kbps, "-maxrate", "%dk" % bitrate_kbps,
+             "-bufsize", "%dk" % max(bitrate_kbps, 100),
+             "-g", str(gop), "-keyint_min", str(gop), "-sc_threshold", "0",
+             "-bf", "0", "-x264-params", "aud=1:repeat-headers=1",
+             "-f", "h264", "pipe:1"]
+    return args
+
+
+class VideoSender:
+    def __init__(self, send_frame, source="test", width=640, height=360,
+                 fps=15, bitrate_kbps=300, gop_seconds=1.0, popen=None, log=None):
+        self._log = log                # log(msg): ghi khi ffmpeg thoat (kem vai dong loi cuoi, da che khoa)
+        self._tail = None
+        self._send = send_frame
+        self._source, self._gop = source, gop_seconds
+        self.profile = (int(width), int(height), int(fps), int(bitrate_kbps))       # (rộng, cao, fps, kbit/s) đang chạy
+        self.profile_changes = 0
+        self._pending_args = None                      # tham số ffmpeg mới do set_profile đặt; vòng _run chạy lại ffmpeg với nó
+        self._args = build_ffmpeg_args(source, width, height, fps,
+                                       bitrate_kbps, gop_seconds)
+        self._popen = popen or subprocess.Popen
+        self._proc = None
+        self._thread = None
+        self._stop = threading.Event()
+        self.frames = 0
+        self.keys = 0
+        self.skipped = 0
+        self.errors = 0
+        self.last_error = ""
+        self.started_at = None
+        self.alive = False
+
+    def start(self):
+        if shutil.which(self._args[0]) is None and self._popen is subprocess.Popen:
+            raise RuntimeError("ffmpeg: khong co trong may")
+        self._proc = self._popen(self._args, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, bufsize=0)
+        self._tail = ffmpeg_log.StderrTail(self._proc)
+        self.started_at = time.time()
+        self.alive = True
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def set_profile(self, width, height, fps, bitrate_kbps):
+        """Đổi chất lượng đang phát: chạy lại ffmpeg với tham số mới (khung đầu của luồng mới là khung khoá). Gọi từ luồng khác với _run."""
+        prof = (int(width), int(height), int(fps), int(bitrate_kbps))
+        if prof == self.profile or self._stop.is_set() or not self.alive:
+            return False
+        self._pending_args = build_ffmpeg_args(self._source, prof[0], prof[1], prof[2], prof[3], self._gop)
+        self.profile = prof
+        self.profile_changes += 1
+        self._kill()                                   # ffmpeg hiện tại thoát -> _run thấy _pending_args và chạy lại
+        return True
+
+    def _run(self):
+        try:
+            while not self._stop.is_set():
+                splitter = AccessUnitSplitter()
+                while not self._stop.is_set():
+                    data = self._proc.stdout.read(65536)
+                    if not data:
+                        break
+                    for au in splitter.feed(data):
+                        key = is_key_frame(au)
+                        try:
+                            if self._send(au, key):
+                                self.frames += 1
+                                self.keys += 1 if key else 0
+                            else:
+                                self.skipped += 1
+                        except Exception as exc:  # noqa: BLE001 - tiep tuc khung sau
+                            self.errors += 1
+                            self.last_error = str(exc)[:80]
+                args, self._pending_args = self._pending_args, None
+                if args is None or self._stop.is_set():
+                    break
+                self._kill()
+                self._args = args
+                self._proc = self._popen(self._args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+                self._tail = ffmpeg_log.StderrTail(self._proc)
+        finally:
+            self.alive = False
+            self._kill()
+            if self._log is not None and not self._stop.is_set():
+                try:
+                    rc = self._proc.poll()
+                    self._log("video ffmpeg thoat ngoai y muon rc=%s frames=%d keys=%d err=%s"
+                              % (rc, self.frames, self.keys, self.stderr_tail() or "-"))
+                except Exception:  # noqa: BLE001 - ghi log khong duoc lam hong luong
+                    pass
+
+    def stderr_tail(self):
+        return self._tail.text() if self._tail is not None else ""
+
+    def _kill(self):
+        ffmpeg_log.kill_and_reap(self._proc)
+
+    def stop(self):
+        self._stop.set()
+        self._kill()
+        if self._thread is not None:
+            self._thread.join(timeout=2)
+
+    def status(self):
+        return {"alive": self.alive, "frames": self.frames, "keys": self.keys,
+                "profile": {"width": self.profile[0], "height": self.profile[1], "fps": self.profile[2], "bitrate_kbps": self.profile[3]},
+                "profile_changes": self.profile_changes,
+                "skipped_before_key": self.skipped, "errors": self.errors,
+                "last_error": self.last_error,
+                "ffmpeg_err": self.stderr_tail(),
+                "seconds": (round(time.time() - self.started_at, 1)
+                            if self.started_at else 0)}

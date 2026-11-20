@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zalo PC — bản chạy trên server</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+</head>
+<body>
+<div class="shell">
+  <!-- Sidebar: product mark + name, scope, nav, account. On the page
+       ground, no rule between it and the top bar (framed-sheet L-frame). -->
+  <aside class="sidebar" id="sidebar" aria-label="Điều hướng">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">Z</span>
+      <span class="brand-name">Zalo PC</span>
+      <span class="brand-scope">Bản chạy trên server</span>
+    </div>
+    <nav class="nav" aria-label="Mục chính">
+      <button id="nav-contacts" class="nav-item on" type="button">
+        <span class="nav-label">Danh bạ</span>
+      </button>
+      <button id="nav-calls" class="nav-item" type="button">
+        <span class="nav-label">Cuộc gọi</span>
+        <span id="nav-call-dot" class="nav-dot" hidden></span>
+      </button>
+      <button id="nav-webhooks" class="nav-item" type="button">
+        <span class="nav-label">Webhook</span>
+      </button>
+      <button id="nav-services" class="nav-item" type="button">
+        <span class="nav-label">Dịch vụ</span>
+      </button>
+      <button id="nav-polls" class="nav-item" type="button">
+        <span class="nav-label">Bình chọn nhóm</span>
+      </button>
+      <button id="nav-devices" class="nav-item" type="button">
+        <span class="nav-label">Thiết bị</span>
+      </button>
+      <button id="nav-account" class="nav-item" type="button">
+        <span class="nav-label">Tài khoản</span>
+      </button>
+    </nav>
+    <div class="sidebar-foot">
+      <div id="who" class="who">Đang kiểm tra…</div>
+      <button id="btn-logout" class="btn btn-danger-outline" type="button">Đăng xuất</button>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <!-- Top bar (48px, on the ground): menu on phones, centred search,
+         active-call pill on the right. -->
+    <header class="topbar">
+      <button id="btn-menu" class="btn-menu" type="button" aria-label="Mở menu" aria-expanded="false"><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><path d="M0 1h18M0 7h18M0 13h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <div class="topbar-search">
+        <input id="search" type="text" placeholder="Tìm tên hoặc threadID…" aria-label="Tìm tên hoặc threadID" autocomplete="off">
+      </div>
+      <button id="topbar-call" class="call-pill" type="button" hidden></button>
+    </header>
+
+    <!-- White sheet: the work. Inset 8px from the right/bottom edges. -->
+    <main class="sheet">
+      <!-- View 0: chờ kiểm tra phiên — view DUY NHẤT hiện lúc tải
+           trang. Trung tính: không phải trang QR, không khẳng định
+           "chưa đăng nhập"; app.js đổi sang đúng view sau khi
+           /api/status trả về (sửa lỗi nháy trang QR 2026-11-05:
+           trước đây view-login hiện sẵn rồi mới kiểm tra phiên). -->
+      <section id="view-loading" class="view">
+        <div class="loading-wrap">
+          <h1>Đang mở Zalo PC…</h1>
+          <p class="lede" id="loading-text">Đang kiểm tra phiên đăng nhập…</p>
+        </div>
+      </section>
+
+      <!-- View 1: đăng nhập bằng QR — CHỈ hiện khi /api/status
+           chứng minh là chưa đăng nhập; lúc tải trang nó đang ẩn. -->
+      <section id="view-login" class="view" style="display:none">
+        <div class="login-wrap">
+          <h1>Đăng nhập bằng mã QR</h1>
+          <p class="lede">Mở app Zalo trên điện thoại, quét mã dưới đây là xong.
+            Quét một lần, lần sau mở lên là dùng ngay, không cần quét lại.</p>
+          <div id="qr-box">
+            <img id="qr-img" alt="Mã QR đăng nhập" style="display:none">
+            <div id="qr-wait">Bấm “Lấy mã QR” để bắt đầu.</div>
+          </div>
+          <div id="qr-status" role="status"></div>
+          <div class="login-actions">
+            <button id="btn-qr" class="btn btn-primary" type="button">Lấy mã QR</button>
+            <button id="btn-qr-again" class="btn btn-secondary" type="button" style="display:none">Lấy mã mới</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- View 2: chính — danh bạ + theo dõi cuộc gọi -->
+      <section id="view-main" class="view" style="display:none">
+        <div class="title-row">
+          <div>
+            <h1>Danh bạ</h1>
+            <p class="subline">Danh bạ lấy y nguyên từ addon — bấm một hàng để mở chat, nút “Gọi” để gọi theo threadID.</p>
+            <p id="contacts-meta" class="contacts-meta" role="status"></p>
+          </div>
+          <button id="btn-reload-contacts" class="btn btn-secondary" type="button">Tải lại</button>
+        </div>
+        <div class="count-cards" role="group" aria-label="Lọc theo loại">
+          <button id="filter-all" class="count-card on" type="button">
+            <span class="count-label">Tất cả</span>
+            <span class="count-value num" id="count-all">0</span>
+          </button>
+          <button id="filter-friends" class="count-card" type="button">
+            <span class="count-label">Bạn bè</span>
+            <span class="count-value num" id="count-friends">0</span>
+          </button>
+          <button id="filter-groups" class="count-card" type="button">
+            <span class="count-label">Nhóm</span>
+            <span class="count-value num" id="count-groups">0</span>
+          </button>
+        </div>
+        <div class="main-grid">
+          <div class="contacts-col">
+            <div id="contacts-error" class="error-box" hidden>
+              <span id="contacts-error-text"></span>
+              <button id="btn-retry-contacts" class="btn btn-text" type="button">Tải lại</button>
+            </div>
+            <ul id="list" class="thread-list"></ul>
+            <p id="list-empty" class="empty-note" hidden></p>
+          </div>
+          <aside class="calls-rail" aria-label="Theo dõi cuộc gọi">
+            <h2 class="rail-title">Cuộc gọi</h2>
+            <div id="rail-active"></div>
+            <ul id="rail-history" class="call-feed"></ul>
+            <p id="rail-empty" class="empty-note">Chưa có cuộc gọi nào.</p>
+            <button id="rail-view-all" class="btn btn-text" type="button">Xem tất cả cuộc gọi</button>
+          </aside>
+        </div>
+      </section>
+
+      <!-- View 3: tất cả cuộc gọi -->
+      <section id="view-calls" class="view" style="display:none">
+        <div class="title-row">
+          <div>
+            <h1>Cuộc gọi</h1>
+            <p class="subline">Cuộc gọi đang diễn ra và lịch sử các lần gọi đi.</p>
+          </div>
+        </div>
+        <div id="calls-active"></div>
+        <table class="call-table">
+          <thead>
+            <tr><th>Thời gian</th><th>Đối phương</th><th>ThreadID</th><th>Loại</th><th>Kết quả</th></tr>
+          </thead>
+          <tbody id="calls-history"></tbody>
+        </table>
+        <p id="calls-empty" class="empty-note">Chưa có cuộc gọi nào. Bấm một hàng trong Danh bạ để gọi.</p>
+      </section>
+
+      <!-- View 4: cài đặt webhook -->
+      <section id="view-polls" class="view" style="display:none">
+        <div class="title-row">
+          <div>
+            <h1>Bình chọn nhóm</h1>
+            <p class="subline">Xem ai chưa bình chọn và (nếu muốn) xoá họ khỏi nhóm. Cần là trưởng nhóm hoặc phó nhóm mới xoá được; xoá không hoàn tác được.</p>
+          </div>
+        </div>
+        <div class="polls-row">
+          <label for="polls-group">Nhóm</label>
+          <select id="polls-group"></select>
+          <button id="polls-load" class="btn btn-secondary" type="button">Tải bình chọn</button>
+        </div>
+        <div id="polls-error" class="error-box" hidden></div>
+        <p id="polls-info" class="note-box" hidden></p>
+        <ul id="polls-list" class="polls-list"></ul>
+        <div id="polls-filter" class="polls-row" hidden>
+          <label for="polls-mode">Lọc người</label>
+          <select id="polls-mode">
+            <option value="none">không bình chọn cuộc nào</option>
+            <option value="any">bỏ sót ít nhất một cuộc</option>
+            <option value="min">bình chọn ít hơn N cuộc</option>
+          </select>
+          <input id="polls-min" type="number" min="1" value="1" hidden aria-label="N cuộc">
+          <button id="polls-compute" class="btn btn-primary" type="button">Hiện người chưa bình chọn</button>
+        </div>
+        <div id="polls-result" hidden>
+          <h2 id="polls-result-title"></h2>
+          <p id="polls-skipped" class="subline"></p>
+          <label class="polls-check"><input id="polls-all" type="checkbox"> Chọn tất cả</label>
+          <ul id="polls-nonvoters" class="polls-members"></ul>
+          <details class="polls-protected"><summary id="polls-protected-title"></summary><ul id="polls-protected" class="polls-members"></ul></details>
+          <div class="polls-row">
+            <button id="polls-remove-selected" class="btn btn-danger-outline" type="button">Xoá người đã chọn</button>
+            <button id="polls-remove-all" class="btn btn-danger-outline" type="button">Xoá toàn bộ người chưa bình chọn</button>
+            <button id="polls-stop" class="btn btn-text" type="button" hidden>Dừng</button>
+          </div>
+          <p id="polls-progress" class="subline" role="status"></p>
+        </div>
+      </section>
+
+      <section id="view-webhooks" class="view" style="display:none">
+        <div class="title-row">
+          <div>
+            <h1>Cài đặt webhook</h1>
+            <p class="subline">App tự gửi sự kiện tới địa chỉ của bạn khi có chuyện xảy ra — giống như addon Zalo Bot gửi về Home Assistant. Dán địa chỉ webhook của bạn (n8n, Home Assistant, máy chủ riêng) vào từng loại, bật công tắc rồi bấm Lưu.</p>
+          </div>
+        </div>
+        <p id="webhooks-note" class="note-box">Sự kiện gọi đi gửi được ngay sau khi bạn lưu. Tin nhắn đến, sự kiện nhóm và cảm xúc cần kênh đồng bộ tin nhắn (đang làm) nên hiện chỉ lưu cấu hình và gửi thử — chưa có tin thật để gửi.</p>
+        <div id="webhooks-error" class="error-box" hidden>
+          <span id="webhooks-error-text"></span>
+        </div>
+        <div id="webhooks-saved" class="saved-box" hidden>Đã lưu cài đặt webhook.</div>
+        <form id="webhooks-form">
+          <div class="webhook-card">
+            <div class="webhook-head">
+              <div>
+                <h2>Tin nhắn đến</h2>
+                <p class="field-help">Tin nhắn người khác gửi tới tài khoản này. Tin do chính mình gửi không đẩy ra, để khỏi lặp.</p>
+              </div>
+              <label class="toggle"><input id="wh-message-enabled" type="checkbox" checked><span>Bật</span></label>
+            </div>
+            <label class="field-label" for="wh-message-url">Địa chỉ nhận tin nhắn</label>
+            <input id="wh-message-url" class="field-input mono" type="url" placeholder="https://…" autocomplete="off" inputmode="url">
+            <div class="webhook-actions">
+              <button id="wh-message-test" class="btn btn-secondary" type="button">Gửi thử</button>
+              <span id="wh-message-result" class="test-result" role="status"></span>
+            </div>
+          </div>
+          <div class="webhook-card">
+            <div class="webhook-head">
+              <div>
+                <h2>Sự kiện nhóm</h2>
+                <p class="field-help">Đổi tên nhóm, thêm/xóa thành viên, đổi ảnh nhóm và các sự kiện nhóm khác.</p>
+              </div>
+              <label class="toggle"><input id="wh-group_event-enabled" type="checkbox" checked><span>Bật</span></label>
+            </div>
+            <label class="field-label" for="wh-group_event-url">Địa chỉ nhận sự kiện nhóm</label>
+            <input id="wh-group_event-url" class="field-input mono" type="url" placeholder="https://…" autocomplete="off" inputmode="url">
+            <div class="webhook-actions">
+              <button id="wh-group_event-test" class="btn btn-secondary" type="button">Gửi thử</button>
+              <span id="wh-group_event-result" class="test-result" role="status"></span>
+            </div>
+          </div>
+          <div class="webhook-card">
+            <div class="webhook-head">
+              <div>
+                <h2>Cảm xúc</h2>
+                <p class="field-help">Ai đó thả cảm xúc (thích, tim, haha…) vào một tin nhắn.</p>
+              </div>
+              <label class="toggle"><input id="wh-reaction-enabled" type="checkbox" checked><span>Bật</span></label>
+            </div>
+            <label class="field-label" for="wh-reaction-url">Địa chỉ nhận cảm xúc</label>
+            <input id="wh-reaction-url" class="field-input mono" type="url" placeholder="https://…" autocomplete="off" inputmode="url">
+            <div class="webhook-actions">
+              <button id="wh-reaction-test" class="btn btn-secondary" type="button">Gửi thử</button>
+              <span id="wh-reaction-result" class="test-result" role="status"></span>
+            </div>
+          </div>
+          <div class="webhook-card">
+            <div class="webhook-head">
+              <div>
+                <h2>Cuộc gọi</h2>
+                <p class="field-help">Cuộc gọi đi đã gửi, gọi lỗi, hoặc đã kết thúc. Loại này gửi được ngay, không cần chờ kênh đồng bộ.</p>
+              </div>
+              <label class="toggle"><input id="wh-call-enabled" type="checkbox" checked><span>Bật</span></label>
+            </div>
+            <label class="field-label" for="wh-call-url">Địa chỉ nhận sự kiện gọi</label>
+            <input id="wh-call-url" class="field-input mono" type="url" placeholder="https://…" autocomplete="off" inputmode="url">
+            <div class="webhook-actions">
+              <button id="wh-call-test" class="btn btn-secondary" type="button">Gửi thử</button>
+              <span id="wh-call-result" class="test-result" role="status"></span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button id="wh-save" class="btn btn-primary" type="submit">Lưu cài đặt</button>
+            <span id="wh-save-result" class="test-result" role="status"></span>
+          </div>
+        </form>
+      </section>
+
+      <!-- View 5: chi tiết cuộc gọi đang diễn ra -->
+      <section id="view-call" class="view" style="display:none">
+        <div class="crumbs">
+          <button id="btn-back" class="btn btn-text" type="button">← Danh bạ</button>
+        </div>
+        <div class="detail-head">
+          <h1 id="call-peer">Cuộc gọi</h1>
+          <span id="call-type" class="pill pill-neutral"></span>
+        </div>
+        <p class="detail-meta">ThreadID <span id="call-thread" class="mono"></span> · <span id="call-timer" class="num">00:00</span></p>
+        <p id="call-state" class="call-state" role="status"></p>
+        <p id="call-request" class="row-sub" role="status"></p>
+        <div id="call-incoming" style="display:none">
+          <p>Có cuộc gọi đến (kênh nhận cuộc gọi đang ở giai đoạn 2).</p>
+        </div>
+        <div id="call-media" class="media-panel" hidden>
+          <h2 class="rail-title">Tiếng và hình trong cuộc gọi</h2>
+          <p id="call-media-state" class="row-sub" role="status"></p>
+          <div class="media-row">
+            <span class="media-label">Loa (nghe bên kia)</span>
+            <audio id="call-audio" controls preload="none"></audio>
+            <button id="btn-listen" class="btn btn-secondary" type="button">Nghe trên trình duyệt</button>
+          </div>
+          <div class="media-row">
+            <span class="media-label">Mic</span>
+            <button id="btn-mic-default" class="btn btn-secondary" type="button" title="Phát nguồn mic mặc định trong mục Thiết bị">Mic mặc định</button>
+            <button id="btn-mic-test" class="btn btn-secondary" type="button">Âm 440 Hz</button>
+            <button id="btn-mic-browser" class="btn btn-secondary" type="button" title="Cần HTTPS hoặc localhost để trình duyệt cho dùng mic">Mic trình duyệt</button>
+            <button id="btn-mic-stop" class="btn btn-text" type="button">Tắt mic</button>
+          </div>
+          <div class="media-row">
+            <span class="media-label">Loa trực tiếp</span>
+            <button id="btn-speaker-default" class="btn btn-secondary" type="button" title="Đưa tiếng bên kia vào bộ đàm mặc định trong mục Thiết bị">Bật loa trực tiếp</button>
+            <button id="btn-speaker-stop" class="btn btn-text" type="button">Tắt loa trực tiếp</button>
+          </div>
+          <div class="media-row" id="add-device-box">
+            <span class="media-label">Thêm thiết bị</span>
+            <select id="sel-dev-mic" class="input" aria-label="Mic từ Home Assistant"><option value="">Mic: không chọn</option></select>
+            <select id="sel-dev-speaker" class="input" aria-label="Loa từ Home Assistant"><option value="">Loa: không chọn</option></select>
+            <select id="sel-dev-camera" class="input" aria-label="Camera từ Home Assistant"><option value="">Camera: không chọn</option></select>
+            <button id="btn-dev-apply" class="btn btn-primary" type="button" title="Nối các thiết bị đã chọn vào cuộc gọi này">Nối thiết bị đã chọn</button>
+            <p class="row-sub" id="add-device-hint">Danh sách lấy từ Home Assistant (thêm thiết bị ở HA, không phải ở đây). Muốn nhập tay địa chỉ thì dùng mục «Thiết bị».</p>
+          </div>
+          <div class="media-row">
+            <span class="media-label">Hình</span>
+            <button id="btn-upgrade-video" class="btn btn-primary" type="button" title="Đang gọi thoại: xin chuyển sang video rồi phát camera mặc định">Chuyển sang video</button>
+            <button id="btn-video-default" class="btn btn-secondary" type="button">Camera mặc định</button>
+            <button id="btn-video-test" class="btn btn-secondary" type="button">Hình thử</button>
+            <button id="btn-video-stop" class="btn btn-text" type="button">Tắt hình</button>
+          </div>
+        </div>
+        <div class="detail-actions">
+          <button id="btn-answered" class="btn btn-secondary" type="button" title="Bấm khi thấy bên kia đã nhấc máy — cuộc gọi chuyển sang Đang gọi và không tự ngắt ở mốc 30 giây">Bên kia đã nhấc máy</button>
+          <button id="btn-end" class="btn btn-primary" type="button">Kết thúc</button>
+        </div>
+      </section>
+
+      <!-- View 5: chat theo thread — khung chat kieu Zalo PC -->
+      <section id="view-chat" class="view" style="display:none">
+        <div class="crumbs">
+          <button id="btn-back-chat" class="btn btn-text" type="button">← Danh bạ</button>
+        </div>
+        <div class="chat-wrap">
+          <div class="chat-head">
+            <span id="chat-avatar" class="avatar t0">?</span>
+            <div class="chat-head-main">
+              <div class="chat-head-title">
+                <h1 id="chat-name">Trò chuyện</h1>
+                <span id="chat-type" class="pill pill-neutral"></span>
+              </div>
+              <p class="detail-meta">ThreadID <span id="chat-thread" class="mono"></span><span id="chat-members"></span></p>
+            </div>
+            <button id="btn-chat-call" class="btn btn-secondary" type="button">Gọi</button>
+          </div>
+          <div id="chat-notice" class="notice-box" hidden></div>
+          <div id="chat-history" class="chat-history" aria-live="polite"></div>
+          <p id="chat-empty" class="empty-note" hidden></p>
+          <div class="composer">
+            <input id="chat-file" type="file" multiple hidden>
+            <button id="btn-chat-attach" class="btn btn-secondary" type="button" title="Đính kèm file hoặc ảnh — chọn được nhiều ảnh cùng lúc">Đính kèm</button>
+            <button id="btn-chat-record" class="btn btn-secondary" type="button" title="Ghi âm bằng micro của trình duyệt rồi gửi file">● Ghi âm</button>
+            <input id="chat-input" type="text" placeholder="Nhắn tin…" aria-label="Nhắn tin" autocomplete="off">
+            <button id="btn-chat-send" class="btn btn-primary" type="button">Gửi</button>
+          </div>
+          <p id="chat-rec-state" class="rec-state" role="status" hidden></p>
+          <p id="chat-foot-note" class="chat-foot-note"><span id="chat-sync-note">Tin nhắn đến chưa tự cập nhật — kênh nhận tin (sync) chưa có; bấm “Tải lại lịch sử” để xem lịch sử nhóm mới nhất.</span> <button id="btn-sync-retry" class="btn btn-text" type="button" hidden>Thử kết nối lại</button> <button id="btn-chat-refresh" class="btn btn-text" type="button">Tải lại lịch sử</button></p>
+        </div>
+      </section>
+
+      <!-- View 6: dịch vụ — toàn bộ 96 service addon, theo nhóm -->
+      <section id="view-services" class="view" style="display:none">
+        <div class="title-row">
+          <div>
+            <h1>Dịch vụ</h1>
+            <p class="subline">Tất cả dịch vụ của addon (96 dịch vụ gốc và các API mở rộng), thao tác trên thread đang chọn. Service nào chưa có đường PC thì chỉ hiện trạng thái, không có nút bấm giả.</p>
+          </div>
+        </div>
+        <p id="svc-counts" class="svc-counts" role="status">Đang tải danh mục dịch vụ…</p>
+        <div class="svc-thread">
+          <label for="svc-thread">Thread thao tác</label>
+          <select id="svc-thread"></select>
+          <input id="svc-thread-id" type="text" placeholder="Hoặc nhập threadID…" aria-label="Nhập threadID" autocomplete="off">
+          <select id="svc-thread-type" aria-label="Loại thread">
+            <option value="user">Cá nhân</option>
+            <option value="group">Nhóm</option>
+          </select>
+          <span id="svc-thread-name" class="row-sub"></span>
+        </div>
+        <div class="svc-thread">
+          <label for="svc-search">Tìm dịch vụ</label>
+          <input id="svc-search" type="search" placeholder="Gõ tên hoặc mô tả (ví dụ: nhóm, sticker, dịch…)" autocomplete="off">
+        </div>
+        <div id="svc-tabs" class="svc-tabs" role="tablist" aria-label="Nhóm dịch vụ"></div>
+        <div id="svc-result" class="svc-result" hidden></div>
+        <div id="svc-groups"></div>
+      </section>
+
+      <!-- Thiết bị: nguồn mic / camera mặc định và thông số hình -->
+      <section id="view-devices" class="view" style="display:none">
+        <div class="title-row">
+          <div>
+            <h1>Thiết bị</h1>
+            <p class="subline">Nguồn tiếng và hình mặc định cho mọi cuộc gọi. Mỗi cuộc gọi vẫn ghi đè được ngay trong khung cuộc gọi hoặc bằng service Home Assistant. Loa không cài ở đây: app phát WAV cho thiết bị bất kỳ (loa HA, trình duyệt…).</p>
+          </div>
+        </div>
+        <form id="devices-form" class="devices-form" autocomplete="off">
+          <fieldset>
+            <legend>Mic (tiếng của mình gửi cho bên kia)</legend>
+            <label for="dev-mic-url">Nguồn mic (URL)</label>
+            <input id="dev-mic-url" type="text" placeholder="rtsp://… (camera/go2rtc) · http://HA:8123/api/r1_speaker/mic/…?k=… (loa R1) · test" spellcheck="false">
+            <label for="dev-mic-format">Định dạng</label>
+            <select id="dev-mic-format">
+              <option value="auto">Tự nhận (rtsp, http, tệp)</option>
+              <option value="s16le16k">PCM16 mono 16 kHz thô (mic loa R1)</option>
+            </select>
+            <label class="check"><input id="dev-auto-mic" type="checkbox"> Tự phát mic khi cuộc gọi được nghe máy</label>
+          </fieldset>
+          <fieldset>
+            <legend>Loa trực tiếp (tiếng bên kia ra loa, độ trễ thấp)</legend>
+            <label for="dev-speaker-url">URL bộ đàm (http/https, nhận A-law 8 kHz bằng POST)</label>
+            <input id="dev-speaker-url" type="text" placeholder="http://HA:8123/api/r1_speaker/intercom/…?k=… (loa R1) · …/api/dahua_talk/intercom/…?k=… (camera Imou/Dahua)" spellcheck="false">
+            <label class="check"><input id="dev-echo-guard" type="checkbox"> Chống vọng: tạm ngừng gửi mic khi loa đang phát tiếng bên kia (dùng khi mic và loa là cùng một thiết bị, ví dụ R1)</label>
+            <p class="row-sub">Để trống = không dùng; loa HA bình thường vẫn do tích hợp Home Assistant điều khiển.</p>
+          </fieldset>
+          <fieldset>
+            <legend>Camera (hình của mình gửi cho bên kia)</legend>
+            <label for="dev-camera-url">Nguồn camera (URL)</label>
+            <input id="dev-camera-url" type="text" placeholder="rtsp://… (go2rtc, nên dùng luồng -sub) · http(s)://… · test" spellcheck="false">
+            <div class="dev-grid">
+              <label>Rộng <input id="dev-width" type="number" min="160" max="1280" step="2"></label>
+              <label>Cao <input id="dev-height" type="number" min="120" max="720" step="2"></label>
+              <label>Khung/giây <input id="dev-fps" type="number" min="5" max="30"></label>
+              <label>Kbps <input id="dev-bitrate" type="number" min="50" max="1500" step="10"></label>
+            </div>
+            <label class="check"><input id="dev-auto-video" type="checkbox"> Bên kia xin chuyển sang video: tự đồng ý và phát camera mặc định</label>
+            <label for="dev-auto-delay">Chờ trước khi tự đồng ý (giây, 0 = ngay)</label>
+            <input id="dev-auto-delay" type="number" min="0" max="120" step="1" style="max-width:120px">
+          </fieldset>
+          <p id="devices-note" class="row-sub" role="status"></p>
+          <button class="btn btn-primary" type="submit">Lưu</button>
+        </form>
+      </section>
+
+      <!-- Tài khoản: đổi mật khẩu đăng nhập app -->
+      <section id="view-account" class="view" style="display:none">
+        <div class="title-row">
+          <div>
+            <h1>Tài khoản</h1>
+            <p class="subline">Đổi mật khẩu đăng nhập app (không phải mật khẩu Zalo). Đổi xong, các phiên đăng nhập khác bị đăng xuất.</p>
+          </div>
+        </div>
+        <form id="account-form" class="devices-form" autocomplete="off">
+          <fieldset>
+            <legend>Đổi mật khẩu</legend>
+            <label for="acc-old">Mật khẩu hiện tại</label>
+            <input id="acc-old" type="password" autocomplete="current-password" required>
+            <label for="acc-new">Mật khẩu mới (từ 8 ký tự)</label>
+            <input id="acc-new" type="password" autocomplete="new-password" minlength="8" required>
+            <label for="acc-new2">Nhập lại mật khẩu mới</label>
+            <input id="acc-new2" type="password" autocomplete="new-password" minlength="8" required>
+          </fieldset>
+          <p id="account-note" class="row-sub" role="status"></p>
+          <button id="account-save" class="btn btn-primary" type="submit">Đổi mật khẩu</button>
+        </form>
+      </section>
+
+      <footer class="sheet-foot">
+        <span id="app-version" class="mono"></span>
+        <span id="engine-note"></span>
+      </footer>
+    </main>
+  </div>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
